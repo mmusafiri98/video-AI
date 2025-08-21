@@ -4,7 +4,7 @@ import torch
 
 st.title("🤖 Text-Generation CPU Demo")
 
-model_name = "distilgpt2"  # Modèle léger
+model_name = "Muyumba/colegium-ai"  # Modèle léger
 device = "cpu"
 
 @st.cache_resource
