@@ -1,39 +1,29 @@
 import streamlit as st
-from diffusers import DiffusionPipeline
+from diffusers import StableDiffusionPipeline
 import torch
 import imageio
 import tempfile
-import os
 
-# ---------- CONFIG ----------
-st.set_page_config(page_title="Vimeo AI - CPU Demo", page_icon="🎬", layout="centered")
+st.set_page_config(page_title="Mini Vidéo IA", page_icon="🎬", layout="centered")
+st.title("🎬 Mini génération vidéo (images animées)")
 
-st.title("🎬 Vimeo AI - Génération Vidéo (CPU Version)")
+prompt = st.text_area("📝 Décris ta scène", "Un coucher de soleil au bord de la mer")
+frames_count = st.slider("🖼️ Nombre d'images", 4, 12, 6)
 
-# ---------- INPUT ----------
-prompt = st.text_area(
-    "📝 Décris ta vidéo",
-    "Un coucher de soleil sur la mer avec des vagues calmes"
-)
+if st.button("🚀 Générer (CPU léger)"):
+    st.warning("⚠️ Cela peut prendre un peu de temps (CPU)")
 
-duration = st.slider("⏱️ Durée (secondes)", 2, 6, 3)
-fps = st.slider("🎞️ FPS", 4, 12, 8)
-
-if st.button("🚀 Générer la vidéo (CPU)"):
-    st.warning("⚠️ Attention : en CPU ça peut prendre plusieurs minutes...")
-
-    # Charger le modèle (CPU uniquement)
-    pipe = DiffusionPipeline.from_pretrained(
-        "damo-vilab/text-to-video-ms-1.7b",
-        torch_dtype=torch.float32
+    pipe = StableDiffusionPipeline.from_pretrained(
+        "runwayml/stable-diffusion-v1-4"
     ).to("cpu")
 
-    with st.spinner("🎬 Génération en cours..."):
-        video_frames = pipe(prompt, num_frames=duration * fps).frames
+    frames = []
+    for i in range(frames_count):
+        image = pipe(prompt).images[0]
+        frames.append(image)
 
-    # Sauvegarde en MP4
     tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
-    imageio.mimsave(tmp_file.name, video_frames, fps=fps)
+    imageio.mimsave(tmp_file.name, frames, fps=4)
 
     st.video(tmp_file.name)
-    st.success("✅ Vidéo générée avec succès (CPU) !")
+    st.success("✅ Vidéo (animation) générée avec succès !")
