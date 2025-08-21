@@ -1,11 +1,7 @@
 streamlit
-Pillow
-imageio
 torch
 torchvision
-torchaudio
 diffusers
 transformers
 accelerate
-safetensors
-huggingface-hub
+Pillow
