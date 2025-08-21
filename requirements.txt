@@ -1,6 +1,5 @@
 streamlit
 Pillow
-opencv-python
 imageio
 torch
 torchvision
