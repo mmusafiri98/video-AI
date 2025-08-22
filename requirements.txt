@@ -1,5 +1,7 @@
 streamlit==1.29.0
-torch==2.3.1
+torch==2.8.0
+torchvision==0.17.0
+torchaudio==2.8.0
 diffusers==0.24.1
 transformers==4.43.0
 accelerate==0.24.0
