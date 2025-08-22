@@ -1,48 +1,43 @@
 import streamlit as st
 from gradio_client import Client
-import requests
-import os
 
-# Charger le client Hugging Face Spaces
+# Connexion au modèle hébergé sur Hugging Face
 client = Client("Muyumba/Qwen-Qwen-Image-Edit")
 
 st.set_page_config(page_title="Qwen Image Generator", layout="centered")
 
 st.title("🎨 Qwen Image Generator")
-st.write("Décris l'image que tu veux, et le modèle va la générer.")
+st.write("Télécharge une image et décris le style que tu veux. Le modèle génère automatiquement une nouvelle image.")
 
-# Entrée texte de l'utilisateur
-prompt = st.text_area("✏️ Décris ton image :", placeholder="Exemple : un chat jouant de la guitare dans l’espace")
+# Champ texte pour la description
+instruction = st.text_area("📝 Décris le type d’image que tu veux générer :", 
+                           placeholder="Exemple : transforme l’image en style dessin animé...")
 
-if st.button("🚀 Générer l'image") and prompt:
+# Téléversement d’image
+uploaded_file = st.file_uploader("📤 Télécharge une image (jpg, png, jpeg)", type=["jpg", "jpeg", "png"])
+
+# Si l'utilisateur a donné une image ET une description
+if uploaded_file is not None and instruction.strip():
+    st.image(uploaded_file, caption="📸 Image originale", use_column_width=True)
+
     with st.spinner("⏳ Génération en cours..."):
-        # Envoi du texte au modèle Hugging Face
-        result = client.predict(
-            prompt,             # description
-            api_name="/predict" # endpoint Spaces (souvent /predict)
-        )
-
-    # Affichage de l'image
-    if isinstance(result, str):
-        st.image(result, caption="🖼️ Image générée", use_column_width=True)
-
-        # Télécharger l'image
         try:
-            response = requests.get(result)
-            filename = "generated_image.png"
-            with open(filename, "wb") as f:
-                f.write(response.content)
+            # Appel au modèle Hugging Face
+            result = client.predict(
+                uploaded_file,   # image téléversée
+                instruction,     # description donnée par l’utilisateur
+                api_name="/predict"
+            )
 
-            with open(filename, "rb") as f:
-                st.download_button(
-                    label="📥 Télécharger l'image",
-                    data=f,
-                    file_name="generated_image.png",
-                    mime="image/png"
-                )
-            os.remove(filename)
+            # Affichage du résultat
+            if isinstance(result, str):  # si le modèle retourne une URL ou un chemin
+                st.image(result, caption="🖼️ Image générée", use_column_width=True)
+            elif isinstance(result, list) and len(result) > 0:
+                st.image(result[0], caption="🖼️ Image générée", use_column_width=True)
+            else:
+                st.error("❌ Résultat inattendu du modèle :")
+                st.write(result)
+
         except Exception as e:
-            st.error(f"Erreur téléchargement : {e}")
-    else:
-        st.write("Résultat brut :", result)
+            st.error(f"Erreur lors de la génération : {e}")
 
