@@ -1,9 +1,19 @@
-torch==2.8.0
-torchvision==0.23.0
-torchaudio==2.8.0
-diffusers==0.24.1
-streamlit==1.29.0
-Pillow==10.1.0
-imageio==2.31.1
-transformers==4.43.0
-accelerate==0.24.0
+# Updated requirements.txt for Python 3.13 compatibility
+
+# Core ML libraries - using latest compatible versions
+torch>=2.8.0
+torchvision>=0.23.0
+torchaudio>=2.8.0
+
+# Diffusers - use latest stable version instead of 0.24.1
+diffusers>=0.35.0
+
+# Streamlit - keep your existing version or update
+streamlit>=1.29.0
+
+# Common dependencies that might be needed
+transformers>=4.30.0
+accelerate>=0.20.0
+pillow>=9.5.0
+numpy>=1.24.0
+requests>=2.31.0
