@@ -1,40 +1,26 @@
-import streamlit as st
+import gradio as gr
+import requests
 from PIL import Image
-import torch
-from diffusers import DiffusionPipeline
-import imageio
+from io import BytesIO
 
-# Charger un modèle image → image (plus léger que vidéo complète)
-@st.cache_resource
-def load_pipeline():
-    pipe = DiffusionPipeline.from_pretrained(
-        "runwayml/stable-diffusion-v1-5",
-        torch_dtype=torch.float32
-    )
-    pipe = pipe.to("cpu")  # CPU uniquement
-    return pipe
+HF_API_TOKEN = "hf_FqcdfTQhZRqEnLyDSdSZNUHIGQGkcfWIomE"  # Remplace par ton token Hugging Face
 
-st.title("🎬 Générateur Vidéo (CPU-friendly)")
+def generate_image(prompt):
+    url = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
+    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
+    payload = {"inputs": prompt}
+    
+    response = requests.post(url, headers=headers, json=payload)
+    image_bytes = response.content
+    image = Image.open(BytesIO(image_bytes))
+    return image
 
-uploaded_file = st.file_uploader("📤 Uploade une image de départ", type=["png", "jpg", "jpeg"])
+iface = gr.Interface(
+    fn=generate_image,
+    inputs="text",
+    outputs="image",
+    title="Générateur d'images Stable Diffusion",
+    description="Crée une image à partir d'un prompt via Hugging Face API"
+)
 
-if uploaded_file:
-    image = Image.open(uploaded_file).convert("RGB")
-    st.image(image, caption="Image de départ", use_container_width=True)
-
-    prompt = st.text_input("📝 Décris la transformation à appliquer", "Un paysage futuriste cyberpunk")
-
-    if st.button("🚀 Générer la vidéo (courte animation)"):
-        pipe = load_pipeline()
-
-        frames = []
-        with st.spinner("Génération en cours... ⏳ (ça peut prendre ~1-2 minutes)"):
-            for i in range(8):  # 8 frames max pour rester léger
-                frame = pipe(prompt=prompt, image=image, strength=0.6, guidance_scale=7.5).images[0]
-                frames.append(frame)
-
-        output_path = "output.mp4"
-        imageio.mimsave(output_path, frames, fps=4)  # fps bas pour compresser
-
-        st.video(output_path)
-        st.success("✅ Vidéo générée avec succès !")
+iface.launch()
