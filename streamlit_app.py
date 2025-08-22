@@ -1,26 +1,51 @@
-import gradio as gr
-import requests
+import streamlit as st
 from PIL import Image
-from io import BytesIO
+import torch
+from diffusers import StableDiffusionImg2ImgPipeline
+import imageio
+import tempfile
+import os
 
-HF_API_TOKEN = "hf_FqcdfTQhZRqEnLyDSdSZNUHIGQGkcfWIomE"  # Remplace par ton token Hugging Face
+# ---------- CONFIG ----------
+st.set_page_config(page_title="Video Generator CPU", page_icon="🎬", layout="centered")
 
-def generate_image(prompt):
-    url = "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5"
-    headers = {"Authorization": f"Bearer {HF_API_TOKEN}"}
-    payload = {"inputs": prompt}
-    
-    response = requests.post(url, headers=headers, json=payload)
-    image_bytes = response.content
-    image = Image.open(BytesIO(image_bytes))
-    return image
+st.title("🎬 Générateur Vidéo CPU-friendly")
 
-iface = gr.Interface(
-    fn=generate_image,
-    inputs="text",
-    outputs="image",
-    title="Générateur d'images Stable Diffusion",
-    description="Crée une image à partir d'un prompt via Hugging Face API"
-)
+# ---------- Charger le modèle (open-source) ----------
+@st.cache_resource
+def load_model():
+    pipe = StableDiffusionImg2ImgPipeline.from_pretrained(
+        "runwayml/stable-diffusion-v1-5",
+        torch_dtype=torch.float32
+    )
+    pipe.to("cpu")  # CPU uniquement
+    return pipe
 
-iface.launch()
+pipe = load_model()
+
+# ---------- Upload d'image ----------
+uploaded_file = st.file_uploader("📤 Uploade une image de départ", type=["png", "jpg", "jpeg"])
+
+if uploaded_file:
+    image = Image.open(uploaded_file).convert("RGB")
+    st.image(image, caption="Image de départ", use_container_width=True)
+
+    prompt = st.text_input("📝 Décris la transformation à appliquer", "Un paysage futuriste cyberpunk")
+    num_frames = st.slider("⏱ Nombre de frames pour la vidéo", 4, 12, 6)
+
+    if st.button("🚀 Générer la vidéo"):
+        with st.spinner("Génération en cours... ⏳ (CPU peut être lent)"):
+            frames = []
+            for i in range(num_frames):
+                # Chaque frame peut être légèrement différente si tu veux un effet animé
+                frame = pipe(prompt=prompt, image=image, strength=0.6, guidance_scale=7.5).images[0]
+                frames.append(frame)
+
+            # Sauvegarde en vidéo
+            temp_dir = tempfile.gettempdir()
+            output_path = os.path.join(temp_dir, "output.mp4")
+            imageio.mimsave(output_path, frames, fps=4)  # fps bas pour CPU
+
+        st.success("✅ Vidéo générée !")
+        st.video(output_path)
+
