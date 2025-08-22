@@ -1,76 +1,68 @@
+# src/streamlit_app.py
 import streamlit as st
-from gradio_client import Client
+from diffusers import StableDiffusionPipeline
+import torch
+from pathlib import Path
 
-# Connexion au Space Hugging Face
-client = Client("ovi054/Qwen-Image-LORA")
+st.set_page_config(page_title="Mini Video Generator", layout="centered")
 
-st.set_page_config(page_title="Qwen Image Generator", layout="centered")
-
-st.title("🎨 Qwen Image Generator (LORA)")
-st.write("Génère des images à partir de texte avec le modèle **Qwen-Image-LORA** hébergé sur Hugging Face.")
+st.title("🎬 Mini Video Generator")
+st.write("Génère des vidéos courtes à partir de prompts textuels (100% local et léger).")
 
 # Prompt utilisateur
-prompt = st.text_area("📝 Décris l'image que tu veux générer :", 
-                      placeholder="Exemple : Un chat qui joue de la guitare dans l'espace...")
+prompt = st.text_input(
+    "📝 Décris la vidéo :",
+    placeholder="Ex: Un chat qui danse dans une ville futuriste"
+)
 
-# Paramètres de génération
-col1, col2 = st.columns(2)
-with col1:
-    width = st.selectbox("📏 Largeur", [512, 768, 1024], index=2)
-    guidance_scale = st.slider("🎯 Guidance Scale", 1.0, 20.0, 4.0)
-with col2:
-    height = st.selectbox("📐 Hauteur", [512, 768, 1024], index=2)
-    steps = st.slider("🔄 Steps d'inférence", 10, 50, 28)
+num_frames = st.slider("Nombre de frames", 3, 10, 5)
+duration = st.slider("Durée d'une frame (ms)", 200, 1000, 500)
 
-# Seed (aléatoire ou fixe)
-randomize_seed = st.checkbox("🎲 Random Seed", value=True)
-seed = -1 if randomize_seed else st.number_input("Seed fixe :", value=42, step=1)
+if st.button("🚀 Générer"):
+    if not prompt.strip():
+        st.warning("Veuillez entrer une description !")
+    else:
+        with st.spinner("Génération en cours..."):
+            # Charger un modèle SD léger
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            pipe = StableDiffusionPipeline.from_pretrained(
+                "runwayml/stable-diffusion-v1-5",
+                torch_dtype=torch.float16 if device == "cuda" else torch.float32,
+                cache_dir="/app/.cache"  # ✅ évite /root/.cache interdit
+            ).to(device)
 
-# Bouton pour lancer la génération
-if st.button("🚀 Générer l'image") and prompt.strip():
-    with st.spinner("⏳ Génération en cours..."):
-        try:
-            result = client.predict(
-                prompt=prompt,
-                seed=seed,
-                randomize_seed=randomize_seed,
-                width=width,
-                height=height,
-                guidance_scale=guidance_scale,
-                num_inference_steps=steps,
-                lora_id=None,
-                lora_scale=1,
-                api_name="/infer"
+            frames = []
+            for i in range(num_frames):
+                image = pipe(
+                    prompt,
+                    num_inference_steps=15,
+                    guidance_scale=7.5
+                ).images[0]
+                frames.append(image)
+
+            # Sauvegarder en GIF
+            gif_path = Path("generated_video.gif")
+            frames[0].save(
+                gif_path,
+                save_all=True,
+                append_images=frames[1:],
+                duration=duration,
+                loop=0
             )
 
-            # Si le modèle retourne un tuple (chemin, id)
-            if isinstance(result, tuple) and len(result) > 0:
-                st.image(result[0], caption="🖼️ Image générée", use_column_width=True)
+            st.success("✅ GIF généré !")
+            st.image(str(gif_path))
 
-                # Ajout d'un bouton de téléchargement
-                with open(result[0], "rb") as f:
-                    st.download_button(
-                        label="📥 Télécharger l'image",
-                        data=f,
-                        file_name="image_generée.webp",
-                        mime="image/webp"
-                    )
+            # --- Télécharger le GIF en bytes ---
+            with open(gif_path, "rb") as f:
+                gif_bytes = f.read()
 
-            # Si le modèle retourne une simple string (chemin)
-            elif isinstance(result, str):
-                st.image(result, caption="🖼️ Image générée", use_column_width=True)
-
-            # Si c’est une liste
-            elif isinstance(result, list) and len(result) > 0:
-                st.image(result[0], caption="🖼️ Image générée", use_column_width=True)
-
-            else:
-                st.error("❌ Résultat inattendu du modèle")
-                st.write(result)
-
-        except Exception as e:
-            st.error(f"Erreur lors de la génération : {e}")
-
+            st.download_button(
+                label="⬇️ Télécharger le GIF",
+                data=gif_bytes,
+                file_name="generated_video.gif",  # ✅ string
+                mime="image/gif"
+            )
 
 
 
