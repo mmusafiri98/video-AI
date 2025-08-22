@@ -1,8 +1,8 @@
 streamlit==1.26.0
-torch==2.8.0
+torch==2.1.0
 diffusers==0.35.1
 transformers==4.43.0
-accelerate==1.10.0
+accelerate==0.27.2
 safetensors>=0.4.1
-Pillow==10.3.0
+Pillow==9.5.0
 
