@@ -1,35 +1,48 @@
 import streamlit as st
 from gradio_client import Client
+import requests
+import os
 
 # Charger le client Hugging Face Spaces
 client = Client("Muyumba/Qwen-Qwen-Image-Edit")
 
-st.set_page_config(page_title="Qwen Image Edit", layout="centered")
+st.set_page_config(page_title="Qwen Image Generator", layout="centered")
 
-st.title("🖼️ Qwen Image Edit - Demo")
-st.write("Application Streamlit connectée au modèle hébergé sur Hugging Face Spaces.")
+st.title("🎨 Qwen Image Generator")
+st.write("Décris l'image que tu veux, et le modèle va la générer.")
 
-# Zone de téléchargement d'image
-uploaded_file = st.file_uploader("📤 Télécharge une image", type=["png", "jpg", "jpeg"])
+# Entrée texte de l'utilisateur
+prompt = st.text_area("✏️ Décris ton image :", placeholder="Exemple : un chat jouant de la guitare dans l’espace")
 
-# Champ texte pour instruction
-instruction = st.text_input("✏️ Décris la modification que tu veux appliquer à l'image :")
+if st.button("🚀 Générer l'image") and prompt:
+    with st.spinner("⏳ Génération en cours..."):
+        # Envoi du texte au modèle Hugging Face
+        result = client.predict(
+            prompt,             # description
+            api_name="/predict" # endpoint Spaces (souvent /predict)
+        )
 
-if uploaded_file is not None and instruction:
-    st.image(uploaded_file, caption="Image originale", use_column_width=True)
+    # Affichage de l'image
+    if isinstance(result, str):
+        st.image(result, caption="🖼️ Image générée", use_column_width=True)
 
-    # Bouton de soumission
-    if st.button("🚀 Modifier l'image"):
-        with st.spinner("⏳ En cours de traitement..."):
-            # Envoyer l'image et l'instruction au modèle
-            result = client.predict(
-                uploaded_file,      # l’image uploadée
-                instruction,        # le texte d'édition
-                api_name="/predict" # endpoint de Spaces (souvent "/predict")
-            )
+        # Télécharger l'image
+        try:
+            response = requests.get(result)
+            filename = "generated_image.png"
+            with open(filename, "wb") as f:
+                f.write(response.content)
 
-        # Afficher le résultat
-        if isinstance(result, str):  # si c’est un chemin ou une URL
-            st.image(result, caption="Image modifiée", use_column_width=True)
-        else:
-            st.write("Résultat brut :", result)
+            with open(filename, "rb") as f:
+                st.download_button(
+                    label="📥 Télécharger l'image",
+                    data=f,
+                    file_name="generated_image.png",
+                    mime="image/png"
+                )
+            os.remove(filename)
+        except Exception as e:
+            st.error(f"Erreur téléchargement : {e}")
+    else:
+        st.write("Résultat brut :", result)
+
