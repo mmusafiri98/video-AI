@@ -1,3 +1,2 @@
-streamlit>=1.28.0
-torch>=2.0.0
-transformers>=4.30.0
+streamlit
+gradio_client
