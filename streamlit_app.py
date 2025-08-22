@@ -43,17 +43,35 @@ if st.button("🚀 Générer l'image") and prompt.strip():
                 api_name="/infer"
             )
 
-            # Résultat = URL ou chemin vers l'image
-            if isinstance(result, str):
+            # Si le modèle retourne un tuple (chemin, id)
+            if isinstance(result, tuple) and len(result) > 0:
+                st.image(result[0], caption="🖼️ Image générée", use_column_width=True)
+
+                # Ajout d'un bouton de téléchargement
+                with open(result[0], "rb") as f:
+                    st.download_button(
+                        label="📥 Télécharger l'image",
+                        data=f,
+                        file_name="image_generée.webp",
+                        mime="image/webp"
+                    )
+
+            # Si le modèle retourne une simple string (chemin)
+            elif isinstance(result, str):
                 st.image(result, caption="🖼️ Image générée", use_column_width=True)
+
+            # Si c’est une liste
             elif isinstance(result, list) and len(result) > 0:
                 st.image(result[0], caption="🖼️ Image générée", use_column_width=True)
+
             else:
                 st.error("❌ Résultat inattendu du modèle")
                 st.write(result)
 
         except Exception as e:
             st.error(f"Erreur lors de la génération : {e}")
+
+
 
 
 
